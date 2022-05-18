@@ -42,27 +42,45 @@ def Seidel(uB, ub, e):
 def Msqrt(uB, ub):
     n = len(uB[0][:])
 
-    S, D = np.zeros(n), np.zeros(n)
-    D[0][0] = np.sign(uB[0][0])
-    S[0][0] = np.sqrt(np.abs(uB[0][0]))
-    S[0][1:(n-1)] = uB[0][1:(n-1)]/(D[0][0]*S[0][0])
+    S = np.zeros((n, n), dtype=complex)
+    D = np.zeros((n, n), dtype=complex)
 
-    for i in range(1, (n-1)):
-        eh = uB[i][i] - pow(np.sum(np.abs(S[1:(i-1)][i])), 2)*np.diag(D[1:(i-1)][1:(i-1)])
-        D[i][i] = np.sign(eh)
-        S[i][i] = np.sqrt(np.abs(eh))
-        for j in range((i+1), (n-1)):
-            S[i][j] = (uB[i][j] - np.sum(np.conj(S[0:(i-1)][i]))*np.diag(D[0:(i-1)][0:(i-1)])*S[0:(i-1)][j])/(D[i][i]*S[i][i])
-    B = np.transpose(np.conj(S))*D
-    rez1 = np.zeros(n, 1)
-    rez1[0] = ub[0]/B[0][0]
-    for i in range(1, (n-1)):
-        rez1[i] = (ub[i] - np.sum(B[i][0:(i-1)]*rez1[0:(i-1)]))/B[i][i]
-    rez = np.zeros(n, 1)
-    rez[n-1] = rez1[n-1]/S[n-1][n-1]
-    for i in range((n-2), 0, -1):
-        rez[i] = (rez1[i] - np.sum(S[i][(i+1):(n-1)]*rez[(i+1):(n-1)]))/S[i][i]
+    D[0, 0] = np.sign(uB[0, 0])
+    S[0, 0] = np.sqrt(np.abs(uB[0, 0]))
+    S[0, 1:n] = uB[0, 1:n] / (D[0, 0] * S[0, 0])
+    eh = 0
+    for i in range(1, n):
+        if i == 1:
+            eh = uB[i, i] - pow((np.abs(S[0, i])), 2) * D[0, 0]
+        else:
+            eh = uB[i, i] - np.sum(pow((np.abs(S[0:i, i])), 2) * np.diag(D[0:i, 0:i]))
+
+        D[i, i] = np.sign(eh)
+        S[i, i] = pow(eh, 1/2)
+        for j in range((i + 1), n):
+            S[i, j] = (uB[i, j] - np.sum(np.conj(S[0:i, i]) * np.diag(D[0:i, 0:i]) *
+                                         S[0:i, j])) / (D[i, i] * S[i, i])
+
+    rez1 = np.zeros(n, dtype=complex)
+    rez1[0] = ub[0] / S[0][0]
+    for i in range(1, n):
+        rez1[i] = ub[i]
+        for j in range(0, i):
+            rez1[i] = rez1[i] - S[j, i] * rez1[j]
+        rez1[i] = rez1[i] / S[i, i]
+    rez = np.zeros(n, dtype=complex)
+    rez[n-1] = (rez1[n-1]) / S[n-1, n-1]
+    for i in range(n-2, -1, -1):
+        rez[i] = rez1[i]
+        sun = 0
+        j = n - 1
+        while j >= i+1:
+            sun = sun - S[i, j] * rez[j]
+            j = j - 1
+        rez[i] = (rez[i]+sun)/S[i, i]
+
     return rez
+
 
 def main():
     B = np.array(
@@ -85,6 +103,7 @@ def main():
     B = np.array(
         [[0.75, -1.24, 1.56], [-1.24, 0.18, -1.72], [1.56, -1.72, 0.79]])
     b = np.array([0.49, -0.57, 1.03])
+
     print("Метод квадратного корня: ")
     print("Решение: \n", Msqrt(B, b))
     return 0
